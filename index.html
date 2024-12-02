@@ -146,7 +146,8 @@
                 if (pixel === '1') ctx.fillStyle = 'black';
                 else if (pixel === 'R') ctx.fillStyle = 'red';
                 else if (pixel === '0') ctx.fillStyle = 'white';
-                ctx.fillRect(x, y, 1, 1);  
+                else continue;
+                ctx.fillRect(x, y, 1, 1);
             }
         });
 
@@ -155,8 +156,13 @@
         finalCanvas.width = 32;
         finalCanvas.height = 32;
         const finalCtx = finalCanvas.getContext('2d');
-        finalCtx.imageSmoothingEnabled = false;  
-        finalCtx.drawImage(canvas, 0, 0, 32, 32);
+        finalCtx.imageSmoothingEnabled = false;  // keep pixels sharp when scaling
+        
+        // Use nearest-neighbor scaling to preserve pixel integrity
+        finalCtx.drawImage(canvas, 
+            0, 0, 17, 17,   // source rectangle
+            0, 0, 32, 32    // destination rectangle
+        );
 
         // Set favicon
         const favicon = document.getElementById('favicon');
