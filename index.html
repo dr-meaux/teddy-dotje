@@ -106,28 +106,27 @@
             }
         });
 
-        // Hide logo after 2 seconds
-        setTimeout(() => {
-            logo.classList.add('hidden');
-        }, 2000);
-
         // Initialize dot at red pixel position
         const dot = document.getElementById('dot');
         const logoRect = logo.getBoundingClientRect();
         const pixelSize = logoRect.width / 17;
         const startX = logoRect.left + (redPixelX * pixelSize) + (pixelSize - 20) / 2;
-        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2 + 200;
+        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2;
         dot.style.transform = `translate(${startX}px, ${startY}px)`;
         
-        // Start random movement after a short delay
-        setTimeout(moveDot, 2000);
+        // Hide logo and start dot movement simultaneously
+        setTimeout(() => {
+            logo.classList.add('hidden');
+            moveDot();
+        }, 2000);
         
         function moveDot() {
-            const maxX = window.innerWidth - 20;
-            const maxY = window.innerHeight - 20;
+            const dotSize = 20;
+            const padding = 100; // Keep dot away from edges
             
-            const newX = Math.random() * maxX;
-            const newY = Math.random() * maxY;
+            // Calculate x position to cover entire screen width, including negative values
+            const newX = Math.random() * (window.innerWidth + dotSize + 2 * padding) - (window.innerWidth / 2 + padding);
+            const newY = padding + Math.random() * (window.innerHeight - dotSize - padding);
             
             dot.style.transform = `translate(${newX}px, ${newY}px)`;
             setTimeout(moveDot, 1000);
