@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Cat Toy</title>
+    <meta name="apple-mobile-web-app-title" content="Teddy Dotje">
+    <link rel="icon" href="#" id="favicon">
+    <title>Teddy Dotje</title>
     <style>
         html, body {
             margin: 0;
@@ -16,7 +18,38 @@
             background: white;
             overflow: hidden;
             position: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+
+        #logo {
+            display: grid;
+            grid-template-columns: repeat(17, 1fr);
+            gap: 0;  
+            width: 170px;
+            height: 170px;
+            margin: 20px;
+            image-rendering: pixelated;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #logo.hidden {
+            opacity: 0;
+        }
+
+        .pixel {
+            width: 100%;
+            height: 0;
+            padding-bottom: 100%;
+            background: transparent;
+        }
+
+        .white { background: white; }
+        .black { background: black; }
+        .red { background: red; }
+
         #dot {
             position: absolute;
             width: 20px;
@@ -28,9 +61,66 @@
     </style>
 </head>
 <body>
+    <div id="logo"></div>
     <div id="dot"></div>
     <script>
+        // Logo pixel art data
+        const logoData = [
+            '0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0',
+            '0	0	0	1	1	0	0	0	0	0	1	1	0	0	0	0	0',
+            '0	0	1	0	0	1	0	0	0	1	0	0	1	0	0	0	0',
+            '0	0	1	0	0	0	1	1	1	0	0	0	1	0	0	0	0',
+            '0	0	1	0	0	0	0	0	0	0	0	0	1	0	0	0	0',
+            '0	1	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0',
+            '0	1	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0',
+            '0	1	0	0	1	0	0	R	0	0	1	0	0	1	0	0	0',
+            '0	1	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0',
+            '0	1	0	0	0	0	0	0	0	0	0	0	0	1	0	0	0',
+            '0	0	1	0	0	0	0	0	0	0	0	0	1	0	0	0	0',
+            '0	0	0	1	1	1	1	1	1	1	1	1	0	0	1	1	0',
+            '0	0	0	0	1	0	0	0	0	0	1	0	0	0	1	0	1',
+            '0	0	0	0	1	0	0	1	0	0	1	1	1	0	1	0	1',
+            '0	0	0	0	1	0	1	0	1	0	1	0	0	1	0	0	1',
+            '0	0	0	0	1	0	1	0	1	0	1	1	1	0	0	1	0',
+            '0	0	0	0	1	1	1	0	1	1	1	0	0	1	1	0	0'];
+
+        // Create logo and find red pixel position
+        const logo = document.getElementById('logo');
+        let redPixelX = 0;
+        let redPixelY = 0;
+        
+        logoData.forEach((row, y) => {
+            const cleanRow = row.replace(/\t/g, '');
+            for (let x = 0; x < cleanRow.length; x++) {
+                const pixel = cleanRow[x];
+                if (pixel === 'R') {
+                    redPixelX = x;
+                    redPixelY = y;
+                }
+                const div = document.createElement('div');
+                div.className = 'pixel';
+                if (pixel === '0') div.classList.add('white');
+                if (pixel === '1') div.classList.add('black');
+                if (pixel === 'R') div.classList.add('red');
+                logo.appendChild(div);
+            }
+        });
+
+        // Hide logo after 2 seconds
+        setTimeout(() => {
+            logo.classList.add('hidden');
+        }, 2000);
+
+        // Initialize dot at red pixel position
         const dot = document.getElementById('dot');
+        const logoRect = logo.getBoundingClientRect();
+        const pixelSize = logoRect.width / 17;
+        const startX = logoRect.left + (redPixelX * pixelSize) + (pixelSize - 20) / 2;
+        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2 + 200;
+        dot.style.transform = `translate(${startX}px, ${startY}px)`;
+        
+        // Start random movement after a short delay
+        setTimeout(moveDot, 2000);
         
         function moveDot() {
             const maxX = window.innerWidth - 20;
@@ -42,8 +132,42 @@
             dot.style.transform = `translate(${newX}px, ${newY}px)`;
             setTimeout(moveDot, 1000);
         }
-        
-        moveDot();
+
+        // Create favicon
+        const canvas = document.createElement('canvas');
+        canvas.width = 17;  
+        canvas.height = 17;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;  
+
+        logoData.forEach((row, y) => {
+            const cleanRow = row.replace(/\t/g, '');
+            for (let x = 0; x < cleanRow.length; x++) {
+                const pixel = cleanRow[x];
+                if (pixel === '1') ctx.fillStyle = 'black';
+                else if (pixel === 'R') ctx.fillStyle = 'red';
+                else if (pixel === '0') ctx.fillStyle = 'white';
+                ctx.fillRect(x, y, 1, 1);  
+            }
+        });
+
+        // Scale up the favicon for better visibility
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = 32;
+        finalCanvas.height = 32;
+        const finalCtx = finalCanvas.getContext('2d');
+        finalCtx.imageSmoothingEnabled = false;  
+        finalCtx.drawImage(canvas, 0, 0, 32, 32);
+
+        // Set favicon
+        const favicon = document.getElementById('favicon');
+        favicon.href = finalCanvas.toDataURL();
+
+        // Add apple touch icon meta
+        const link = document.createElement('link');
+        link.rel = 'apple-touch-icon';
+        link.href = finalCanvas.toDataURL();
+        document.head.appendChild(link);
     </script>
 </body>
 </html>
