@@ -141,14 +141,14 @@
 
         // Create favicon
         const canvas = document.createElement('canvas');
-        canvas.width = 32;  
-        canvas.height = 32;
+        canvas.width = 48;  
+        canvas.height = 48;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;  
         
         // Fill with transparent background
         ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-        ctx.fillRect(0, 0, 32, 32);
+        ctx.fillRect(0, 0, 48, 48);
 
         // Skip first row and first column
         logoData.slice(1).forEach((row, y) => {
@@ -162,8 +162,8 @@
                 else if (pixel === '0') ctx.fillStyle = 'white';
                 else continue;
                 
-                // Scale up to 32x32 by drawing 2x2 pixels
-                ctx.fillRect(x * 2, y * 2, 2, 2);
+                // Scale up to 32x32 and center in 48x48
+                ctx.fillRect(x * 2 + 8, y * 2 + 8, 2, 2);
             }
         });
 
