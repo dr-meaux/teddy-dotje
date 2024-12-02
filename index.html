@@ -141,45 +141,40 @@
 
         // Create favicon
         const canvas = document.createElement('canvas');
-        canvas.width = 17;  
-        canvas.height = 17;
+        canvas.width = 32;  
+        canvas.height = 32;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;  
+        
+        // Fill with transparent background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        ctx.fillRect(0, 0, 32, 32);
 
-        logoData.forEach((row, y) => {
+        // Skip first row and first column
+        logoData.slice(1).forEach((row, y) => {
             const cleanRow = row.replace(/\t/g, '');
-            for (let x = 0; x < cleanRow.length; x++) {
-                const pixel = cleanRow[x];
+            const rowPixels = cleanRow.slice(1);
+            
+            for (let x = 0; x < rowPixels.length; x++) {
+                const pixel = rowPixels[x];
                 if (pixel === '1') ctx.fillStyle = 'black';
                 else if (pixel === 'R') ctx.fillStyle = 'red';
                 else if (pixel === '0') ctx.fillStyle = 'white';
                 else continue;
-                ctx.fillRect(x, y, 1, 1);
+                
+                // Scale up to 32x32 by drawing 2x2 pixels
+                ctx.fillRect(x * 2, y * 2, 2, 2);
             }
         });
 
-        // Scale up the favicon for better visibility
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = 32;
-        finalCanvas.height = 32;
-        const finalCtx = finalCanvas.getContext('2d');
-        finalCtx.imageSmoothingEnabled = false;  // keep pixels sharp when scaling
-        
-        // Use nearest-neighbor scaling to preserve pixel integrity
-        finalCtx.drawImage(canvas, 
-            0, 0, 17, 17,   // source rectangle
-            0, 0, 32, 32    // destination rectangle
-        );
-
-        finalCanvas = canvas;
         // Set favicon
         const favicon = document.getElementById('favicon');
-        favicon.href = finalCanvas.toDataURL();
+        favicon.href = canvas.toDataURL();
 
         // Add apple touch icon meta
         const link = document.createElement('link');
         link.rel = 'apple-touch-icon';
-        link.href = finalCanvas.toDataURL();
+        link.href = canvas.toDataURL();
         document.head.appendChild(link);
     </script>
 </body>
