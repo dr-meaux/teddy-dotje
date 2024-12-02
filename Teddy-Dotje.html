@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Toy</title>
+    <style>
+        body {
+            margin: 0;
+            background: white;
+            overflow: hidden;
+        }
+        #dot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            transition: all 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="dot"></div>
+    <script>
+        const dot = document.getElementById('dot');
+        
+        function moveDot() {
+            const maxX = window.innerWidth - 20;
+            const maxY = window.innerHeight - 20;
+            
+            const newX = Math.random() * maxX;
+            const newY = Math.random() * maxY;
+            
+            dot.style.transform = `translate(${newX}px, ${newY}px)`;
+            setTimeout(moveDot, 1000);
+        }
+        
+        moveDot();
+    </script>
+</body>
+</html>
