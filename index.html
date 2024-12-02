@@ -111,14 +111,21 @@
         const logoRect = logo.getBoundingClientRect();
         const pixelSize = logoRect.width / 17;
         const startX = logoRect.left + (redPixelX * pixelSize) + (pixelSize - 20) / 2;
-        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2;
-        dot.style.transform = `translate(${startX}px, ${startY}px)`;
+        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2 + window.innerHeight * 0.004;
         
-        // Hide logo and start dot movement simultaneously
+        // Keep dot stationary while logo is visible
+        dot.style.position = 'absolute';
+        dot.style.left = `${startX}px`;
+        dot.style.top = `${startY}px`;
+        
+        // Hide logo and start dot movement with a delay
         setTimeout(() => {
             logo.classList.add('hidden');
-            moveDot();
         }, 2000);
+
+        setTimeout(() => {
+            moveDot();
+        }, 2500); // Starts moving 0.5 seconds after logo disappears
         
         function moveDot() {
             const dotSize = 20;
