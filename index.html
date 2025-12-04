@@ -197,13 +197,34 @@
         const pwaCtx = pwaCanvas.getContext('2d');
         pwaCtx.imageSmoothingEnabled = false;
 
-        // Transparent background
-        pwaCtx.clearRect(0, 0, 192, 192);
+        // White background
+        pwaCtx.fillStyle = '#ffffff';
+        pwaCtx.fillRect(0, 0, 192, 192);
 
-        // Draw scaled logo centered in 192x192
-        const scale = 6; // 17 * 6 = 102px logo
-        const offsetX = Math.floor((192 - 17 * scale) / 2);
-        const offsetY = Math.floor((192 - 17 * scale) / 2);
+        // Find teddy (non-white) bounds so we can scale the figure inside the square
+        let minX = 17, minY = 17, maxX = -1, maxY = -1;
+        logoData.forEach((row, y) => {
+            const cleanRow = row.replace(/\t/g, '');
+            for (let x = 0; x < cleanRow.length; x++) {
+                const pixel = cleanRow[x];
+                if (pixel === '1' || pixel === 'R') {
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        });
+
+        const teddyWidth = maxX >= 0 ? (maxX - minX + 1) : 0;
+        const teddyHeight = maxY >= 0 ? (maxY - minY + 1) : 0;
+
+        // Scale teddy inside the 192x192 icon (controls "zoom" of the bear itself)
+        const scale = 6; // adjust this to fine-tune teddy size inside the white square
+        const teddyPixelWidth = teddyWidth * scale;
+        const teddyPixelHeight = teddyHeight * scale;
+        const offsetX = Math.floor((192 - teddyPixelWidth) / 2);
+        const offsetY = Math.floor((192 - teddyPixelHeight) / 2);
 
         logoData.forEach((row, y) => {
             const cleanRow = row.replace(/\t/g, '');
@@ -211,9 +232,13 @@
                 const pixel = cleanRow[x];
                 if (pixel === '1') pwaCtx.fillStyle = 'black';
                 else if (pixel === 'R') pwaCtx.fillStyle = 'red';
-                else if (pixel === '0') pwaCtx.fillStyle = 'white';
                 else continue;
-                pwaCtx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+                pwaCtx.fillRect(
+                    offsetX + (x - minX) * scale,
+                    offsetY + (y - minY) * scale,
+                    scale,
+                    scale
+                );
             }
         });
 
