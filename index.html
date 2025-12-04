@@ -189,6 +189,58 @@
         link.rel = 'apple-touch-icon';
         link.href = canvas.toDataURL();
         document.head.appendChild(link);
+
+        // Android PWA icon (192x192) and manifest using same logo data
+        const pwaCanvas = document.createElement('canvas');
+        pwaCanvas.width = 192;
+        pwaCanvas.height = 192;
+        const pwaCtx = pwaCanvas.getContext('2d');
+        pwaCtx.imageSmoothingEnabled = false;
+
+        // Transparent background
+        pwaCtx.clearRect(0, 0, 192, 192);
+
+        // Draw scaled logo centered in 192x192
+        const scale = 6; // 17 * 6 = 102px logo
+        const offsetX = Math.floor((192 - 17 * scale) / 2);
+        const offsetY = Math.floor((192 - 17 * scale) / 2);
+
+        logoData.forEach((row, y) => {
+            const cleanRow = row.replace(/\t/g, '');
+            for (let x = 0; x < cleanRow.length; x++) {
+                const pixel = cleanRow[x];
+                if (pixel === '1') pwaCtx.fillStyle = 'black';
+                else if (pixel === 'R') pwaCtx.fillStyle = 'red';
+                else if (pixel === '0') pwaCtx.fillStyle = 'white';
+                else continue;
+                pwaCtx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+            }
+        });
+
+        const pwaIcon = pwaCanvas.toDataURL('image/png');
+
+        const manifest = {
+            name: 'Teddy Dotje',
+            short_name: 'Teddy',
+            icons: [
+                {
+                    src: pwaIcon,
+                    sizes: '192x192',
+                    type: 'image/png'
+                }
+            ],
+            display: 'standalone',
+            background_color: '#ffffff',
+            theme_color: '#ffffff'
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const manifestURL = URL.createObjectURL(manifestBlob);
+
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestURL;
+        document.head.appendChild(manifestLink);
     </script>
 </body>
 </html>
