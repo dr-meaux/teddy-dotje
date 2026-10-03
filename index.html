@@ -275,23 +275,6 @@
         const favicon = document.getElementById('favicon');
         favicon.href = canvas.toDataURL();
 
-        // Add apple touch icon meta
-        const link = document.createElement('link');
-        link.rel = 'apple-touch-icon';
-        link.href = canvas.toDataURL();
-        document.head.appendChild(link);
-
-        // Android PWA icon (192x192) and manifest using same logo data
-        const pwaCanvas = document.createElement('canvas');
-        pwaCanvas.width = 192;
-        pwaCanvas.height = 192;
-        const pwaCtx = pwaCanvas.getContext('2d');
-        pwaCtx.imageSmoothingEnabled = false;
-
-        // White background
-        pwaCtx.fillStyle = '#ffffff';
-        pwaCtx.fillRect(0, 0, 192, 192);
-
         // Find teddy (non-white) bounds so we can scale the figure inside the square
         let minX = 17, minY = 17, maxX = -1, maxY = -1;
         logoData.forEach((row, y) => {
@@ -310,54 +293,84 @@
         const teddyWidth = maxX >= 0 ? (maxX - minX + 1) : 0;
         const teddyHeight = maxY >= 0 ? (maxY - minY + 1) : 0;
 
-        // Scale teddy inside the 192x192 icon (controls "zoom" of the bear itself)
-        const scale = 6; // adjust this to fine-tune teddy size inside the white square
-        const teddyPixelWidth = teddyWidth * scale;
-        const teddyPixelHeight = teddyHeight * scale;
-        const offsetX = Math.floor((192 - teddyPixelWidth) / 2);
-        const offsetY = Math.floor((192 - teddyPixelHeight) / 2);
-
-        logoData.forEach((row, y) => {
-            const cleanRow = row.replace(/\t/g, '');
-            for (let x = 0; x < cleanRow.length; x++) {
-                const pixel = cleanRow[x];
-                if (pixel === '1') pwaCtx.fillStyle = 'black';
-                else if (pixel === 'R') pwaCtx.fillStyle = '#0055ff';
-                else continue;
-                pwaCtx.fillRect(
-                    offsetX + (x - minX) * scale,
-                    offsetY + (y - minY) * scale,
-                    scale,
-                    scale
-                );
-            }
-        });
-
-        const pwaIcon = pwaCanvas.toDataURL('image/png');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        const manifest = {
-            name: 'Teddy Dotje',
-            short_name: 'Teddy Dotje',
-            icons: [
-                {
-                    src: pwaIcon,
-                    sizes: '192x192',
-                    type: 'image/png'
-                }
-            ],
-            display: 'standalone',
-            background_color: prefersDark ? '#111111' : '#ffffff',
-            theme_color: prefersDark ? '#111111' : '#ffffff'
+        const iconColors = {
+            light: { bg: '#ffffff', fg: '#000000', dot: '#0055ff' },
+            dark: { bg: '#111111', fg: '#eeeeee', dot: '#4d94ff' }
         };
 
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-        const manifestURL = URL.createObjectURL(manifestBlob);
+        // Square app icon with a solid background (iOS turns transparency into black)
+        function drawIcon(size, colors) {
+            const iconCanvas = document.createElement('canvas');
+            iconCanvas.width = size;
+            iconCanvas.height = size;
+            const iconCtx = iconCanvas.getContext('2d');
+            iconCtx.imageSmoothingEnabled = false;
+
+            iconCtx.fillStyle = colors.bg;
+            iconCtx.fillRect(0, 0, size, size);
+
+            // Scale teddy inside the icon (controls "zoom" of the bear itself), 6px per pixel at 192
+            const scale = Math.round(size / 32);
+            const offsetX = Math.floor((size - teddyWidth * scale) / 2);
+            const offsetY = Math.floor((size - teddyHeight * scale) / 2);
+
+            logoData.forEach((row, y) => {
+                const cleanRow = row.replace(/\t/g, '');
+                for (let x = 0; x < cleanRow.length; x++) {
+                    const pixel = cleanRow[x];
+                    if (pixel === '1') iconCtx.fillStyle = colors.fg;
+                    else if (pixel === 'R') iconCtx.fillStyle = colors.dot;
+                    else continue;
+                    iconCtx.fillRect(
+                        offsetX + (x - minX) * scale,
+                        offsetY + (y - minY) * scale,
+                        scale,
+                        scale
+                    );
+                }
+            });
+
+            return iconCanvas.toDataURL('image/png');
+        }
+
+        // Apple touch icon and manifest. Home screen icons can't switch with the
+        // system theme, so use the theme active when the app is added, and keep
+        // them in sync if the theme changes while the page is open.
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.sizes = '180x180';
+        document.head.appendChild(appleIcon);
 
         const manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
-        manifestLink.href = manifestURL;
         document.head.appendChild(manifestLink);
+
+        const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function applyAppIcons() {
+            const colors = darkQuery.matches ? iconColors.dark : iconColors.light;
+
+            appleIcon.href = drawIcon(180, colors);
+
+            const manifest = {
+                name: 'Teddy Dotje',
+                short_name: 'Teddy Dotje',
+                icons: [
+                    { src: drawIcon(192, colors), sizes: '192x192', type: 'image/png' },
+                    { src: drawIcon(512, colors), sizes: '512x512', type: 'image/png' }
+                ],
+                display: 'standalone',
+                background_color: colors.bg,
+                theme_color: colors.bg
+            };
+
+            const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+            if (manifestLink.href) URL.revokeObjectURL(manifestLink.href);
+            manifestLink.href = URL.createObjectURL(manifestBlob);
+        }
+
+        applyAppIcons();
+        darkQuery.addEventListener('change', applyAppIcons);
     </script>
 </body>
 </html>
