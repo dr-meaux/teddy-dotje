@@ -243,103 +243,84 @@
             setTimeout(moveDot, 1000);
         }
 
-        // Create favicon
-        const canvas = document.createElement('canvas');
-        canvas.width = 48;  
-        canvas.height = 48;
-        const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = false;  
-        
-        // Fill with transparent background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-        ctx.fillRect(0, 0, 48, 48);
-
-        // Skip first row and first column
-        logoData.slice(1).forEach((row, y) => {
-            const cleanRow = row.replace(/\t/g, '');
-            const rowPixels = cleanRow.slice(1);
-            
-            for (let x = 0; x < rowPixels.length; x++) {
-                const pixel = rowPixels[x];
-                if (pixel === '1') ctx.fillStyle = 'black';
-                else if (pixel === 'R') ctx.fillStyle = '#0055ff';
-                else if (pixel === '0') ctx.fillStyle = 'white';
-                else continue;
-                
-                // Scale up to 32x32 and center in 48x48
-                ctx.fillRect(x * 2 + 8, y * 2 + 8, 2, 2);
-            }
-        });
-
-        // Set favicon
-        const favicon = document.getElementById('favicon');
-        favicon.href = canvas.toDataURL();
-
         // Find teddy (non-white) bounds so we can scale the figure inside the square
         let minX = 17, minY = 17, maxX = -1, maxY = -1;
-        logoData.forEach((row, y) => {
-            const cleanRow = row.replace(/\t/g, '');
-            for (let x = 0; x < cleanRow.length; x++) {
-                const pixel = cleanRow[x];
+        const grid = logoData.map(row => row.replace(/\t/g, '').split(''));
+        grid.forEach((row, y) => {
+            row.forEach((pixel, x) => {
                 if (pixel === '1' || pixel === 'R') {
                     if (x < minX) minX = x;
                     if (y < minY) minY = y;
                     if (x > maxX) maxX = x;
                     if (y > maxY) maxY = y;
                 }
-            }
+            });
         });
 
         const teddyWidth = maxX >= 0 ? (maxX - minX + 1) : 0;
         const teddyHeight = maxY >= 0 ? (maxY - minY + 1) : 0;
 
-        const iconColors = {
-            light: { bg: '#ffffff', fg: '#000000', dot: '#0055ff' },
-            dark: { bg: '#111111', fg: '#eeeeee', dot: '#4d94ff' }
-        };
+        // Flood fill from the edges to find pixels outside the teddy, which stay
+        // transparent. Pixels enclosed by the outline are filled white, so the icon
+        // reads on light (black outline) and dark (white body) backgrounds alike.
+        const outside = grid.map(row => row.map(() => false));
+        const stack = [];
+        grid.forEach((row, y) => row.forEach((pixel, x) => {
+            if (x === 0 || y === 0 || x === row.length - 1 || y === grid.length - 1) stack.push([x, y]);
+        }));
+        while (stack.length) {
+            const [x, y] = stack.pop();
+            if (y < 0 || y >= grid.length || x < 0 || x >= grid[y].length) continue;
+            if (outside[y][x] || grid[y][x] !== '0') continue;
+            outside[y][x] = true;
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+        }
 
-        // Square app icon with a solid background (iOS turns transparency into black)
-        function drawIcon(size, colors) {
+        // Square icon with a transparent background
+        function drawIcon(size) {
             const iconCanvas = document.createElement('canvas');
             iconCanvas.width = size;
             iconCanvas.height = size;
             const iconCtx = iconCanvas.getContext('2d');
             iconCtx.imageSmoothingEnabled = false;
 
-            iconCtx.fillStyle = colors.bg;
-            iconCtx.fillRect(0, 0, size, size);
-
             // Scale teddy inside the icon (controls "zoom" of the bear itself), 6px per pixel at 192
-            const scale = Math.round(size / 32);
+            const scale = Math.max(1, Math.round(size / 32));
             const offsetX = Math.floor((size - teddyWidth * scale) / 2);
             const offsetY = Math.floor((size - teddyHeight * scale) / 2);
 
-            logoData.forEach((row, y) => {
-                const cleanRow = row.replace(/\t/g, '');
-                for (let x = 0; x < cleanRow.length; x++) {
-                    const pixel = cleanRow[x];
-                    if (pixel === '1') iconCtx.fillStyle = colors.fg;
-                    else if (pixel === 'R') iconCtx.fillStyle = colors.dot;
-                    else continue;
+            grid.forEach((row, y) => {
+                row.forEach((pixel, x) => {
+                    if (pixel === '1') iconCtx.fillStyle = '#000000';
+                    else if (pixel === 'R') iconCtx.fillStyle = '#0055ff';
+                    else if (!outside[y][x]) iconCtx.fillStyle = '#ffffff';
+                    else return;
                     iconCtx.fillRect(
                         offsetX + (x - minX) * scale,
                         offsetY + (y - minY) * scale,
                         scale,
                         scale
                     );
-                }
+                });
             });
 
             return iconCanvas.toDataURL('image/png');
         }
 
-        // Apple touch icon and manifest. Home screen icons can't switch with the
-        // system theme, so use the theme active when the app is added, and keep
-        // them in sync if the theme changes while the page is open.
+        // Favicon and apple touch icon
+        document.getElementById('favicon').href = drawIcon(48);
+
         const appleIcon = document.createElement('link');
         appleIcon.rel = 'apple-touch-icon';
         appleIcon.sizes = '180x180';
+        appleIcon.href = drawIcon(180);
         document.head.appendChild(appleIcon);
+
+        // Manifest: one icon, splash and theme colors follow the system theme
+        const icons = [
+            { src: drawIcon(192), sizes: '192x192', type: 'image/png' },
+            { src: drawIcon(512), sizes: '512x512', type: 'image/png' }
+        ];
 
         const manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
@@ -347,21 +328,15 @@
 
         const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-        function applyAppIcons() {
-            const colors = darkQuery.matches ? iconColors.dark : iconColors.light;
-
-            appleIcon.href = drawIcon(180, colors);
-
+        function updateManifest() {
+            const color = darkQuery.matches ? '#111111' : '#ffffff';
             const manifest = {
                 name: 'Teddy Dotje',
                 short_name: 'Teddy Dotje',
-                icons: [
-                    { src: drawIcon(192, colors), sizes: '192x192', type: 'image/png' },
-                    { src: drawIcon(512, colors), sizes: '512x512', type: 'image/png' }
-                ],
+                icons,
                 display: 'standalone',
-                background_color: colors.bg,
-                theme_color: colors.bg
+                background_color: color,
+                theme_color: color
             };
 
             const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
@@ -369,8 +344,8 @@
             manifestLink.href = URL.createObjectURL(manifestBlob);
         }
 
-        applyAppIcons();
-        darkQuery.addEventListener('change', applyAppIcons);
+        updateManifest();
+        darkQuery.addEventListener('change', updateManifest);
     </script>
 </body>
 </html>
