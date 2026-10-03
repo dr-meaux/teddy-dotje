@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <!-- Draw under a transparent iOS status bar (it can't be hidden on iPhone) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Teddy Dotje">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -57,6 +59,7 @@
             width: 170px;
             height: 170px;
             margin: 20px;
+            margin-top: calc(20px + env(safe-area-inset-top));
             image-rendering: pixelated;
             opacity: 1;
             transition: opacity 0.5s ease-out;
