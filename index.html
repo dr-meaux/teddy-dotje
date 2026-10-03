@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="Teddy Dotje">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="#" id="favicon">
     <title>Teddy Dotje</title>
     <style>
@@ -21,7 +21,7 @@
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #111111;
+                --bg: #000000;
                 --fg: #eeeeee;
                 --dot: #4d94ff;
             }
@@ -329,7 +329,7 @@
         const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
         function updateManifest() {
-            const color = darkQuery.matches ? '#111111' : '#ffffff';
+            const color = darkQuery.matches ? '#000000' : '#ffffff';
             const manifest = {
                 name: 'Teddy Dotje',
                 short_name: 'Teddy Dotje',
