@@ -6,16 +6,34 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Teddy Dotje">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="#" id="favicon">
     <title>Teddy Dotje</title>
     <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #000000;
+            /* Cats are dichromats: blue/violet is the color they see best */
+            --dot: #0055ff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #111111;
+                --fg: #eeeeee;
+                --dot: #4d94ff;
+            }
+        }
+
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100vh;
             height: 100dvh;
-            background: white;
+            background: var(--bg);
             overflow: hidden;
             position: fixed;
             display: flex;
@@ -57,25 +75,57 @@
             background: transparent;
         }
 
-        .white { background: white; }
-        .black { background: black; }
-        .red { background: red; }
+        .white { background: var(--bg); }
+        .black { background: var(--fg); }
+        .red { background: var(--dot); }
 
         #dot {
             position: absolute;
             width: 20px;
             height: 20px;
-            background-color: red;
+            background-color: var(--dot);
             border-radius: 50%;
             transition: all 1s ease-in-out;
             pointer-events: none;
             -webkit-touch-callout: none;
+        }
+
+        /* Expanding ring when the dot is caught */
+        #dot.hit::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid var(--dot);
+            animation: ping 0.5s ease-out forwards;
+        }
+
+        @keyframes ping {
+            from { transform: scale(1); opacity: 0.8; }
+            to { transform: scale(3); opacity: 0; }
+        }
+
+        #score {
+            position: absolute;
+            right: calc(12px + env(safe-area-inset-right));
+            bottom: calc(10px + env(safe-area-inset-bottom));
+            font: 12px/1 system-ui, -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
+            color: var(--fg);
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+            pointer-events: none;
+        }
+
+        #score.visible {
+            opacity: 0.3;
         }
     </style>
 </head>
 <body>
     <div id="logo"></div>
     <div id="dot"></div>
+    <div id="score"></div>
     <script>
         // Logo pixel art data
         const logoData = [
@@ -138,7 +188,48 @@
 
         setTimeout(() => {
             moveDot();
+            startScoring();
         }, 2500); // Starts moving 0.5 seconds after logo disappears
+
+        // Session score: count taps that land on (or near) the moving dot
+        const scoreEl = document.getElementById('score');
+        const hitRadius = 40; // generous, paws are not precise
+        const hitCooldown = 300; // ms, so one swipe doesn't score many times
+        let score = 0;
+        let sessionStart = 0;
+        let lastHit = 0;
+
+        function renderScore() {
+            const minutes = (performance.now() - sessionStart) / 60000;
+            const perMinute = minutes > 0 ? score / minutes : 0;
+            scoreEl.textContent = `${score} \u00b7 ${perMinute.toFixed(1)}/min`;
+        }
+
+        function startScoring() {
+            sessionStart = performance.now();
+            renderScore();
+            scoreEl.classList.add('visible');
+            setInterval(renderScore, 1000);
+
+            document.addEventListener('pointerdown', (e) => {
+                const now = performance.now();
+                if (now - lastHit < hitCooldown) return;
+
+                const rect = dot.getBoundingClientRect();
+                const dx = e.clientX - (rect.left + rect.width / 2);
+                const dy = e.clientY - (rect.top + rect.height / 2);
+                if (dx * dx + dy * dy > hitRadius * hitRadius) return;
+
+                lastHit = now;
+                score++;
+                renderScore();
+
+                // Restart the ring animation
+                dot.classList.remove('hit');
+                void dot.offsetWidth;
+                dot.classList.add('hit');
+            });
+        }
         
         function moveDot() {
             const dotSize = 20;
@@ -171,7 +262,7 @@
             for (let x = 0; x < rowPixels.length; x++) {
                 const pixel = rowPixels[x];
                 if (pixel === '1') ctx.fillStyle = 'black';
-                else if (pixel === 'R') ctx.fillStyle = 'red';
+                else if (pixel === 'R') ctx.fillStyle = '#0055ff';
                 else if (pixel === '0') ctx.fillStyle = 'white';
                 else continue;
                 
@@ -231,7 +322,7 @@
             for (let x = 0; x < cleanRow.length; x++) {
                 const pixel = cleanRow[x];
                 if (pixel === '1') pwaCtx.fillStyle = 'black';
-                else if (pixel === 'R') pwaCtx.fillStyle = 'red';
+                else if (pixel === 'R') pwaCtx.fillStyle = '#0055ff';
                 else continue;
                 pwaCtx.fillRect(
                     offsetX + (x - minX) * scale,
@@ -243,6 +334,7 @@
         });
 
         const pwaIcon = pwaCanvas.toDataURL('image/png');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
         const manifest = {
             name: 'Teddy Dotje',
@@ -255,8 +347,8 @@
                 }
             ],
             display: 'standalone',
-            background_color: '#ffffff',
-            theme_color: '#ffffff'
+            background_color: prefersDark ? '#111111' : '#ffffff',
+            theme_color: prefersDark ? '#111111' : '#ffffff'
         };
 
         const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
