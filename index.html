@@ -17,17 +17,33 @@
         :root {
             --bg: #ffffff;
             --fg: #000000;
+            --panel: #ffffff;
+            --button: #f0f0f0;
             /* Cats are dichromats: blue/violet is the color they see best */
-            --dot: #0055ff;
+            --c-blue: #0055ff;
+            --c-violet: #7a2cff;
+            --c-yellow: #e0b000;
+            --c-red: #ff0000;
+            --dot: var(--c-blue);
+            --dot-size: 20px;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #000000;
                 --fg: #eeeeee;
-                --dot: #4d94ff;
+                --panel: #161616;
+                --button: #2a2a2a;
+                --c-blue: #4d94ff;
+                --c-violet: #a070ff;
+                --c-yellow: #ffd400;
+                --c-red: #ff3b30;
             }
         }
+
+        :root[data-dot="violet"] { --dot: var(--c-violet); }
+        :root[data-dot="yellow"] { --dot: var(--c-yellow); }
+        :root[data-dot="red"] { --dot: var(--c-red); }
 
         html, body {
             margin: 0;
@@ -84,8 +100,8 @@
 
         #dot {
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: var(--dot-size);
+            height: var(--dot-size);
             background-color: var(--dot);
             border-radius: 50%;
             transition: all 1s ease-in-out;
@@ -110,18 +126,88 @@
 
         #score {
             position: absolute;
-            right: calc(12px + env(safe-area-inset-right));
-            bottom: calc(10px + env(safe-area-inset-bottom));
-            font: 12px/1 system-ui, -apple-system, sans-serif;
+            left: 50%;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            font: 18px/1 system-ui, -apple-system, sans-serif;
             font-variant-numeric: tabular-nums;
+            white-space: nowrap;
             color: var(--fg);
             opacity: 0;
-            transition: opacity 0.5s ease-out;
+            transition: opacity 0.5s ease-out, transform 1s ease-out;
             pointer-events: none;
         }
 
         #score.visible {
             opacity: 0.3;
+        }
+
+        /* Holding the score opens the menu; it grows to show it's working */
+        #score.holding {
+            opacity: 0.8;
+            transform: translateX(-50%) scale(1.3);
+        }
+
+        #menu {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.4);
+            cursor: default;
+            z-index: 1;
+        }
+
+        #menu[hidden] {
+            display: none;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin: 16px;
+            padding: 20px;
+            border-radius: 24px;
+            background: var(--panel);
+            color: var(--fg);
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .panel button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            padding: 0;
+            border: 3px solid transparent;
+            border-radius: 18px;
+            background: var(--button);
+            color: inherit;
+            font: 600 18px system-ui, -apple-system, sans-serif;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .panel button.selected {
+            border-color: var(--fg);
+        }
+
+        .swatch {
+            display: block;
+            border-radius: 50%;
+            background: var(--dot);
+        }
+
+        .panel .done {
+            width: 100%;
         }
     </style>
 </head>
@@ -129,6 +215,22 @@
     <div id="logo"></div>
     <div id="dot"></div>
     <div id="score"></div>
+    <div id="menu" hidden>
+        <div class="panel">
+            <div class="row">
+                <button data-size="14"><span class="swatch" style="width: 14px; height: 14px"></span></button>
+                <button data-size="20"><span class="swatch" style="width: 20px; height: 20px"></span></button>
+                <button data-size="40"><span class="swatch" style="width: 40px; height: 40px"></span></button>
+            </div>
+            <div class="row">
+                <button data-color="blue"><span class="swatch" style="width: 40px; height: 40px; background: var(--c-blue)"></span></button>
+                <button data-color="violet"><span class="swatch" style="width: 40px; height: 40px; background: var(--c-violet)"></span></button>
+                <button data-color="yellow"><span class="swatch" style="width: 40px; height: 40px; background: var(--c-yellow)"></span></button>
+                <button data-color="red"><span class="swatch" style="width: 40px; height: 40px; background: var(--c-red)"></span></button>
+            </div>
+            <button class="done">Done</button>
+        </div>
+    </div>
     <script>
         // Logo pixel art data
         const logoData = [
@@ -149,6 +251,25 @@
             '0	0	0	0	1	0	1	0	1	0	1	0	0	1	0	0	1',
             '0	0	0	0	1	0	1	0	1	0	1	1	1	0	0	1	0',
             '0	0	0	0	1	1	1	0	1	1	1	0	0	1	1	0	0'];
+
+        // Laser size and color, remembered between visits
+        const settingsKey = 'teddy-dotje-settings';
+        const settings = { size: 20, color: 'blue' };
+        try {
+            Object.assign(settings, JSON.parse(localStorage.getItem(settingsKey)));
+        } catch (e) {}
+
+        function applySettings() {
+            document.documentElement.dataset.dot = settings.color;
+            document.documentElement.style.setProperty('--dot-size', `${settings.size}px`);
+            document.querySelectorAll('[data-size]').forEach(b => b.classList.toggle('selected', Number(b.dataset.size) === settings.size));
+            document.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('selected', b.dataset.color === settings.color));
+            try {
+                localStorage.setItem(settingsKey, JSON.stringify(settings));
+            } catch (e) {}
+        }
+
+        applySettings();
 
         // Create logo and find red pixel position
         const logo = document.getElementById('logo');
@@ -176,8 +297,8 @@
         const dot = document.getElementById('dot');
         const logoRect = logo.getBoundingClientRect();
         const pixelSize = logoRect.width / 17;
-        const startX = logoRect.left + (redPixelX * pixelSize) + (pixelSize - 20) / 2;
-        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - 20) / 2 + window.innerHeight * 0.004;
+        const startX = logoRect.left + (redPixelX * pixelSize) + (pixelSize - settings.size) / 2;
+        const startY = logoRect.top + (redPixelY * pixelSize) + (pixelSize - settings.size) / 2 + window.innerHeight * 0.004;
         
         // Keep dot stationary while logo is visible
         dot.style.position = 'absolute';
@@ -196,7 +317,7 @@
 
         // Session score: count taps that land on (or near) the moving dot
         const scoreEl = document.getElementById('score');
-        const hitRadius = 40; // generous, paws are not precise
+        const minHitRadius = 40; // generous, paws are not precise
         const hitCooldown = 300; // ms, so one swipe doesn't score many times
         let score = 0;
         let sessionStart = 0;
@@ -215,8 +336,10 @@
             setInterval(renderScore, 1000);
 
             document.addEventListener('pointerdown', (e) => {
+                if (!menu.hidden) return;
                 const now = performance.now();
                 if (now - lastHit < hitCooldown) return;
+                const hitRadius = Math.max(minHitRadius, settings.size);
 
                 const rect = dot.getBoundingClientRect();
                 const dx = e.clientX - (rect.left + rect.width / 2);
@@ -233,9 +356,60 @@
                 dot.classList.add('hit');
             });
         }
+
+        // Hold the score for a second to open the menu (a passing paw won't)
+        const menu = document.getElementById('menu');
+        const holdDuration = 1000;
+        const holdPadding = 30; // easier to hit than the text itself
+        let holdTimer = null;
+        let holdPointer = null;
+        let menuOpenedAt = 0;
+
+        function cancelHold() {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+            holdPointer = null;
+            scoreEl.classList.remove('holding');
+        }
+
+        document.addEventListener('pointerdown', (e) => {
+            if (!menu.hidden || holdTimer || !scoreEl.classList.contains('visible')) return;
+            const r = scoreEl.getBoundingClientRect();
+            if (e.clientX < r.left - holdPadding || e.clientX > r.right + holdPadding ||
+                e.clientY < r.top - holdPadding || e.clientY > r.bottom + holdPadding) return;
+
+            holdPointer = e.pointerId;
+            scoreEl.classList.add('holding');
+            holdTimer = setTimeout(() => {
+                cancelHold();
+                menu.hidden = false;
+                menuOpenedAt = performance.now();
+            }, holdDuration);
+        });
+
+        ['pointerup', 'pointercancel'].forEach(type => {
+            document.addEventListener(type, (e) => {
+                if (e.pointerId === holdPointer) cancelHold();
+            });
+        });
+
+        menu.addEventListener('click', (e) => {
+            // Ignore the release of the hold that just opened the menu
+            if (performance.now() - menuOpenedAt < 300) return;
+
+            const button = e.target.closest('button');
+            if (!button) {
+                if (e.target === menu) menu.hidden = true;
+                return;
+            }
+            if (button.dataset.size) settings.size = Number(button.dataset.size);
+            if (button.dataset.color) settings.color = button.dataset.color;
+            if (button.classList.contains('done')) menu.hidden = true;
+            applySettings();
+        });
         
         function moveDot() {
-            const dotSize = 20;
+            const dotSize = settings.size;
             const padding = 100; // Keep dot away from edges
             
             // Calculate x position to cover entire screen width, including negative values
